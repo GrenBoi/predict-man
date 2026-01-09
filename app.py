@@ -1,4 +1,4 @@
-from flask import Flask , request, jsonify, render_template
+from flask import Flask , request, jsonify
 import statbotics, json
 import time
 
@@ -11,7 +11,6 @@ r = redis.Redis(host='192.168.100.2', port=6379, decode_responses=True)
 app = Flask(__name__)
 g_webhook_data = {}
 predictMan = PredictionManager()
-
 
     # Define a route and a view function
 @app.route('/tba', methods=["POST", "GET"])
@@ -33,7 +32,6 @@ def notifyMatchStart():
         return {"success": "success"}, 200 
     else:
         return jsonify({"fail": "failed"}), 200
-    r.close()
 
 #    Get upcoming match data and send prediction to the statbotics handler
 def getUpcomingMatchData(webhook_data):
@@ -44,10 +42,7 @@ def getUpcomingMatchData(webhook_data):
         print("failed to retrieve start time, but there is a match in ~7min")
     predictMan.Statbotics.getMatchPrediction(webhook_data["message_data"]["match_key"])
 
-def getAllPredictions(webhook_data):
-    return ["Match " + webhook_data["message_data"]["match_key"],sb.get_match(webhook_data["message_data"]["match_key"],["pred"])]
-
-#STATBOTICS ACCURACY KEY IS "statboticsAccuracy"
+#TO FIND STATBOTICS ACCURACY, THE KEY IS "statboticsAccuracy"
 
 #NEW CLASS SYSTEM
 class Statbotics:
