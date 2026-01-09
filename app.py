@@ -7,71 +7,53 @@ import redis
 sb = statbotics.Statbotics()
 r = redis.Redis(host='192.168.100.2', port=6379, decode_responses=True)
 
-# True
-#r.get('foo')
-# bar
-#print(r.get('foo'))
-#for team in range(350,400):
-#    print(str(team) + ": " + r.get(team))
-#    try:
-#        data = sb.get_team(team)
-#        r.set(team, data["norm_epa"]["current"])
-#    except:
-#        r.set(team, 'not found')
-#print(r.get("364"))
-#r.hset('user-session:123', mapping={
-#    'name': 'John',
-#    "surname": 'Smith',
-#    "company": 'Redis',
-#    "age": 29
-#})
 
-#r.hgetall('user-session:123')
-# {'surname': 'Smith', 'name': 'John', 'company': 'Redis', 'age': '29'}
-
-r.close()
 app = Flask(__name__)
 g_webhook_data = {}
+predictMan = PredictionManager()
 
 
     # Define a route and a view function
 @app.route('/tba', methods=["POST", "GET"])
 def notifyMatchStart():
-    predictMan = PredictionManager()
-    # Webhook data is typically sent in the request body as JSON
-    if request.method == "POST":
-        g_webhook_data = request.json
-        if g_webhook_data["message_type"] == "upcoming_match":
-            #print("Received webhook data:", g_webhook_data)
-            try:
-                scheduled_time = g_webhook_data["message_data"]["scheduled_time"]
-                print("Scheduled Time: " + time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(scheduled_time)))
-            except:
-                print("failed to retrieve start time, but there is a match in ~7min")
-            predictMan.statbotics.getMatchPrediction(g_webhook_data["message_data"]["match_key"])
-            return {"success": "success"}, 200
-        elif g_webhook_data["message_type"] == "match_score":
-            #print("Received webhook data:", g_webhook_data)
-            predictMan.statbotics.updateAccuracy(g_webhook_data["message_data"]["match_key"])#get match prediction for the match that is recieved
-            return {"success": "success"}, 200
-        else:
-            return jsonify({"fail": "failed"}), 200
-    else:
+    # If the request was not POST
+    if request.method != "POST":
         return jsonify({"get": "method"}), 200
+        
+    g_webhook_data = request.json
+
+    #   upcoming match
+    if g_webhook_data["message_type"] == "upcoming_match":
+        getUpcomingMatchData(g_webhook_data)
+        return {"success": "success"}, 200
+    #   match score
+    elif g_webhook_data["message_type"] == "match_score":
+        #get match prediction for the match that is recieved
+        predictMan.Statbotics.updateAccuracy(g_webhook_data["message_data"]["match_key"])
+        return {"success": "success"}, 200 
+    else:
+        return jsonify({"fail": "failed"}), 200
+    r.close()
+
+#    Get upcoming match data and send prediction to the statbotics handler
+def getUpcomingMatchData(webhook_data):
+    try:
+        scheduled_time = webhook_data["message_data"]["scheduled_time"]
+        print("Scheduled Time: " + time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(scheduled_time)))
+    except:
+        print("failed to retrieve start time, but there is a match in ~7min")
+    predictMan.Statbotics.getMatchPrediction(webhook_data["message_data"]["match_key"])
 
 def getAllPredictions(webhook_data):
     return ["Match " + webhook_data["message_data"]["match_key"],sb.get_match(webhook_data["message_data"]["match_key"],["pred"])]
 
-
 #STATBOTICS ACCURACY KEY IS "statboticsAccuracy"
 
 #NEW CLASS SYSTEM
-class statbotics:
+class Statbotics:
     def __init__(self):
         pass
-
     def getEPA(self,team):
-        #r.set(team, data["norm_epa"]["current"])
         try:
             data = sb.get_team(team)
             print(data["norm_epa"]["current"])
@@ -127,23 +109,8 @@ class statbotics:
 class tba:
     def __init__(self):
         pass
+
 class PredictionManager:
     def __init__(self):
-        self.statbotics = statbotics()
+        self.Statbotics = Statbotics()
         self.tba = tba()
-
-keys_list = ['2024necmp_f1m1', '2024necmp_f1m2', '2024necmp_f1m3',"2024necmp_f1m4","2023necmp_f1m1"
-,"2023necmp_f1m2","2023necmp_f1m3","2024casj_qm1","2024casj_qm2","2024casj_qm3","2024casj_qm4"]
-#r.delete(*keys_list)
-
-predict364 = PredictionManager()
-print(r.hgetall("2024necmp_f1m1"))
-print(r.hgetall("2024necmp_f1m2"))
-#r.delete("2024necmp_f1m3")
-print(r.hgetall("2024necmp_f1m3"))
-print(r.hgetall("2024casj_qm1"))
-print(r.hgetall("2024casj_qm2"))
-print(r.hgetall("2024casj_qm3"))
-print(r.hgetall("2024casj_qm4"))
-print(r.hgetall("statboticsAccuracy"))
-#print(sb.get_match("2024casj_qm4"))
