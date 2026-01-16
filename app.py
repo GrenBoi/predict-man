@@ -1,14 +1,14 @@
 from flask import Flask , request, jsonify
-import statbotics, json
-import time, requests
+import statbotics
+import time
+import requests
 
 import redis
 
 sb = statbotics.Statbotics()
 r = redis.Redis(host='192.168.100.2', port=6379, decode_responses=True)
 predictionAPIurl = "https://match.api.apisb.me/prediction"
-
-
+            
 #NEW CLASS SYSTEM
 class Statbotics:
     def __init__(self):
@@ -17,7 +17,7 @@ class Statbotics:
         try:
             data = sb.get_team(team)
             print(data["norm_epa"]["current"])
-        except:
+        except(UserWarning):
             print('not found')
     def fetchPrediction(self, matchID):#function for average prediction
         #returns a tuple of (winnerPredict, red is winner probability, totalAccuracy), if not exist return None
@@ -28,7 +28,7 @@ class Statbotics:
             return None
 
     def calculateMatchPrediction(self,matchID):
-        if r.hget(matchID,"matchID") != None:
+        if r.hget(matchID,"matchID") is not None:
             return
         redTeamWinningProb = float(sb.get_match(matchID,["pred"])["pred"]["red_win_prob"])
         predictedWinner = ""
@@ -45,7 +45,7 @@ class Statbotics:
 
     def updateAccuracy(self,matchID):
         #if the acuracy was already checked, return early as accuracy should not be checked again
-        if r.hget(matchID,"wasStatboticsCorrect") != None or r.hget(matchID,"matchID") == None:
+        if r.hget(matchID,"wasStatboticsCorrect") is not None or r.hget(matchID,"matchID") is None:
             return
         #find and update winner
         winner = sb.get_match(matchID,["result"])["result"]["winner"]
@@ -113,7 +113,7 @@ class PredictionAPI:
         r.hset(matchID, "predictionAPIPredictedWinnerProbability", predictionJsonData[1])
     
     def updateAccuracy(self,matchID):
-        if r.hget(matchID,"wasPredictionApiCorrect") != None or r.hget(matchID,"matchID") == None:
+        if r.hget(matchID,"wasPredictionApiCorrect") is not None or r.hget(matchID,"matchID") is None:
             return
         winner = sb.get_match(matchID,["result"])["result"]["winner"]
         #update the match info to have is_statbotics correct section
@@ -169,7 +169,7 @@ class PredictionManager:
         #for every prediction multiply by its accuracy so weighted average
         for prediction in predictions:
             #prediction tuple format: (winnerPredict, red is winner probability, totalAccuracy)
-            if prediction != None:
+            if prediction is not None:
                 total += float(prediction[1]) * float(prediction[2])
                 weightTotal += float(prediction[2])
         return total/weightTotal
@@ -213,7 +213,7 @@ def getUpcomingMatchData(webhook_data):
     try:
         scheduled_time = webhook_data["message_data"]["scheduled_time"]
         print("Scheduled Time: " + time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(scheduled_time)) + "\n")
-    except:
+    except(KeyError):
         print("failed to retrieve start time, but there is a match in ~7min")
     predictMan.Statbotics.calculateMatchPrediction(webhook_data["message_data"]["match_key"])
     predictMan.PredictionAPI.calculateMatchPrediction(webhook_data["message_data"])
