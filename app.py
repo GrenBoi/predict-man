@@ -19,10 +19,9 @@ class Statbotics:
             print(data["norm_epa"]["current"])
         except:
             print('not found')
-    def fetchPrediction(self, matchID):
-        
+    def fetchPrediction(self, matchID):#function for average prediction
         #returns a tuple of (winnerPredict, red is winner probability, totalAccuracy), if not exist return None
-        if r.hgetall(matchID)["statboticsRedTeamWinningProb"] != None:
+        if r.hexists(matchID, "statboticsRedTeamWinningProb"):
             winProbability = r.hgetall(matchID)["statboticsRedTeamWinningProb"]
             return (r.hgetall(matchID)["statboticsPredictedWinner"],winProbability,r.hgetall("statboticsAccuracy")["statboticsTotalAccuracy"])
         else:
@@ -84,9 +83,9 @@ class PredictionAPI:
     def __init__(self):
         pass
 
-    def fetchPrediction(self, matchID):
+    def fetchPrediction(self, matchID):#function for average prediction
         #returns a tuple of (winnerPredict, red is winner probability, totalAccuracy), if not there return None
-        if r.hgetall(matchID)["predictionAPIPredictedWinnerProbability"] != None:
+        if r.hexists(matchID, "predictionAPIPredictedWinner"):
             if r.hgetall(matchID)["predictionAPIPredictedWinner"] == "blue":
                 #changes red probability of win to blue for format
                 winProbability = 1 - r.hgetall(matchID)["predictionAPIPredictedWinnerProbability"]
