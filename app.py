@@ -19,8 +19,16 @@ class Statbotics:
             print(data["norm_epa"]["current"])
         except:
             print('not found')
+    def fetchPrediction(self, matchID):
+        
+        #returns a tuple of (winnerPredict, red is winner probability, totalAccuracy), if not exist return None
+        if r.hgetall(matchID)["statboticsRedTeamWinningProb"] != None:
+            winProbability = r.hgetall(matchID)["statboticsRedTeamWinningProb"]
+            return (r.hgetall(matchID)["statboticsPredictedWinner"],winProbability,r.hgetall("statboticsAccuracy")["statboticsTotalAccuracy"])
+        else:
+            return None
 
-    def getMatchPrediction(self,matchID):
+    def calculateMatchPrediction(self,matchID):
         if r.hget(matchID,"matchID") != None:
             return
         redTeamWinningProb = float(sb.get_match(matchID,["pred"])["pred"]["red_win_prob"])
@@ -42,7 +50,6 @@ class Statbotics:
             return
         #find and update winner
         winner = sb.get_match(matchID,["result"])["result"]["winner"]
-        print(sb.get_match(matchID,["result"]))
         r.hset(matchID, "actualWinner", winner)
         #update the match info to have is_statbotics correct section
         redTeamWinningProb = r.hgetall(matchID)["statboticsRedTeamWinningProb"]
@@ -76,13 +83,23 @@ class Tba:
 class PredictionAPI:
     def __init__(self):
         pass
-    def getMatchPrediction(self, match_data):
+
+    def fetchPrediction(self, matchID):
+        #returns a tuple of (winnerPredict, red is winner probability, totalAccuracy), if not there return None
+        if r.hgetall(matchID)["predictionAPIPredictedWinnerProbability"] != None:
+            if r.hgetall(matchID)["predictionAPIPredictedWinner"] == "blue":
+                #changes red probability of win to blue for format
+                winProbability = 1 - r.hgetall(matchID)["predictionAPIPredictedWinnerProbability"]
+            return (r.hgetall(matchID)["predictionAPIPredictedWinner"],r.hgetall(matchID)["predictionAPIPredictedWinnerProbability"],r.hgetall("predictionApiAccuracy")["predictionApiTotalAccuracy"])
+        else:
+            return None
+    def calculateMatchPrediction(self, match_data):
         teams = match_data["team_keys"]
         matchID = match_data["match_key"]
         payload = {
-           "team-red-1" : teams[0],
-           "team-red-2" : teams[1],
-           "team-red-3" : teams[2],
+            "team-red-1" : teams[0],
+            "team-red-2" : teams[1],
+            "team-red-3" : teams[2],
             "team-blue-1" : teams[3],
             "team-blue-2" : teams[4],
             "team-blue-3" : teams[5]
@@ -96,7 +113,7 @@ class PredictionAPI:
         r.hset(matchID, "predictionAPIPredictedWinnerProbability", predictionJsonData[1])
     
     def updateAccuracy(self,matchID):
-        if r.hget(matchID,"waspredictionAPICorrect") != None or r.hget(matchID,"matchID") == None:
+        if r.hget(matchID,"wasPredictionApiCorrect") != None or r.hget(matchID,"matchID") == None:
             return
         winner = sb.get_match(matchID,["result"])["result"]["winner"]
         #update the match info to have is_statbotics correct section
@@ -142,8 +159,20 @@ class PredictionManager:
         self.Statbotics = Statbotics()
         self.Tba = Tba()
         self.PredictionAPI = PredictionAPI()
-
-
+    def averagePrediction(self, matchID):
+        #prediction red wins
+        predictions = []
+        total = 0.0
+        weightTotal = 0.0
+        predictions.append(self.Statbotics.fetchPrediction(matchID))
+        predictions.append(self.PredictionAPI.fetchPrediction(matchID))
+        #for every prediction multiply by its accuracy so weighted average
+        for prediction in predictions:
+            #prediction tuple format: (winnerPredict, red is winner probability, totalAccuracy)
+            if prediction != None:
+                total += float(prediction[1]) * float(prediction[2])
+                weightTotal += float(prediction[2])
+        return total/weightTotal
 
 app = Flask(__name__)
 g_webhook_data = {}
@@ -181,20 +210,22 @@ def getUpcomingMatchData(webhook_data):
         print("Scheduled Time: " + time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(scheduled_time)) + "\n")
     except:
         print("failed to retrieve start time, but there is a match in ~7min")
-    predictMan.Statbotics.getMatchPrediction(webhook_data["message_data"]["match_key"])
-    predictMan.PredictionAPI.getMatchPrediction(webhook_data["message_data"])
+    predictMan.Statbotics.calculateMatchPrediction(webhook_data["message_data"]["match_key"])
+    predictMan.PredictionAPI.calculateMatchPrediction(webhook_data["message_data"])
 #TO FIND STATBOTICS ACCURACY, THE KEY IS "statboticsAccuracy"
 
 
 keys_list = ['2024necmp_f1m1', '2024necmp_f1m2', '2024necmp_f1m3',"2024necmp_f1m4","2023necmp_f1m1"
-,"2023necmp_f1m2","2023necmp_f1m3","2024casj_qm1","2024casj_qm2","2024casj_qm3","2024casj_qm4, statboticsAccuracy, predictionApiAccuracy"]
+,"2023necmp_f1m2","2023necmp_f1m3","2024casj_qm1","2024casj_qm2","2024casj_qm3","2024casj_qm4", "statboticsAccuracy","predictionApiAccuracy","2025wila_f1m1","2025wila_f1m2"]
 #r.delete(*keys_list)
 all_keys = r.keys('*')
 print(f"Found {len(all_keys)} keys.")
-print(f"Found {all_keys} keys.")
+#print(f"Found {all_keys} keys.")
 for key in all_keys:
-    
+
     #print(r.hgetall(key))
     #print()
-    
+
     pass
+#print(predictMan.averagePrediction("2023necmp_f1m1"))
+#print(r.hgetall("2024necmp_f1m2"))
