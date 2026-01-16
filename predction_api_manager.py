@@ -1,7 +1,7 @@
 import redis
 import statbotics
 
-predictionAPIurl = "https://match.api.apisb.me/prediction"
+prediction_api_url = "https://match.api.apisb.me/prediction"
 r = redis.Redis(host="192.168.100.2", port=6379, decode_responses=True)
 sb = statbotics.Statbotics()
 
@@ -9,7 +9,7 @@ class PredictionAPI_Manager:
     def __init__(self):
         pass
 
-    def fetch_prediction(self, matchID):  
+    def fetch_prediction(self, match_key):  
         """
 
         Takes in match_key from TBA
@@ -18,22 +18,22 @@ class PredictionAPI_Manager:
 
         """
 
-        if r.hexists(matchID, "predictionAPIPredictedWinner"):
-            winProbability = r.hget(matchID, "predictionAPIPredictedWinnerProbability")
-            if r.hget(matchID, "predictionAPIPredictedWinner") == "blue":
+        if r.hexists(match_key, "prediction_api_predicted_winner"):
+            win_probability = r.hget(match_key, "prediction_api_predicted_winner_probability")
+            if r.hget(match_key, "prediction_api_predicted_winner") == "blue":
                 # changes red probability of win to blue for format
-                winProbability = 1 - r.hget(
-                    matchID, "predictionAPIPredictedWinnerProbability"
+                win_probability = 1 - r.hget(
+                    match_key, "prediction_api_predicted_winner_probability"
                 )
             return (
-                r.hget(matchID, "predictionAPIPredictedWinner"),
-                winProbability,
-                r.hget("predictionApiAccuracy", "predictionApiTotalAccuracy"),
+                r.hget(match_key, "prediction_api_predicted_winner"),
+                win_probability,
+                r.hget("prediction_api_accuracy", "prediction_api_total_accuracy"),
             )
         else:
             return None
 
-    def calculateMatchPrediction(self, match_data):
+    def calculate_match_prediction(self, match_data):
         """
         
         Takes in Match Data from TBA
@@ -48,7 +48,7 @@ class PredictionAPI_Manager:
         
         """
         teams = match_data["team_keys"]
-        matchID = match_data["match_key"]
+        match_key = match_data["match_key"]
         payload = {
             "team-red-1": teams[0],
             "team-red-2": teams[1],
@@ -57,25 +57,26 @@ class PredictionAPI_Manager:
             "team-blue-2": teams[4],
             "team-blue-3": teams[5],
         }
-        response = requests.post(predictionAPIurl, payload)
-        self.input_match_prediction(response.json(), matchID)
+        response = requests.post(prediction_api_url, payload)
+        self.input_match_prediction(response.json(), match_key)
 
-    def input_match_prediction(self, returnJson, matchID):
+    def input_match_prediction(self, return_json, match_key):
         """
 
         Takes in json from predictionApi and match_key from TBA
         input_match_prediction Function is used for adding the data from the predictionAPI to redis
 
         """
-        predictionJsonData = self.getPredictionFromJson(
-            returnJson
+
+        prediction_json_data = self.get_prediction_from_json(
+            return_json
         )  # api code to get prediction
-        r.hset(matchID, "predictionAPIPredictedWinner", predictionJsonData[0])
+        r.hset(match_key, "prediction_api_predicted_winner", prediction_json_data[0])
         r.hset(
-            matchID, "predictionAPIPredictedWinnerProbability", predictionJsonData[1]
+            match_key, "prediction_api_predicted_winner_probability", prediction_json_data[1]
         )
 
-    def update_accuracy(self, matchID):
+    def update_accuracy(self, match_key):
         """
         
         Takes in match_key Data from TBA
@@ -84,80 +85,80 @@ class PredictionAPI_Manager:
 
         Example Format of info at this time(redis key = 2025wila_sf5m1):
         {   
-            'matchID': '2025wila_sf5m1',
-            'statboticsPredictedWinner': 'blue',
-            'statboticsRedTeamWinningProb': '0.4496',
-            'predictionAPIPredictedWinner': 'red',
-            'predictionAPIPredictedWinnerProbability': '0.5671841',
-            'actualWinner': 'red',
-            'wasStatboticsCorrect': 'no',
+            'match_key': '2025wila_sf5m1',
+            'statbotics_predicted_winner': 'blue',
+            'statbotics_red_team_winning_prob': '0.4496',
+            'prediction_api_predicted_winner': 'red',
+            'prediction_api_predicted_winner_probability': '0.5671841',
+            'actual_winner': 'red',
+            'was_statbotics_correct': 'no',
             'was_prediction_api_correct': 'yes'
         }
 
-        Accuracy Info Example(redis key = predictionApiAccuracy): 
+        Accuracy Info Example(redis key = prediction_api_accuracy): 
         {
-         'numCorrectPredictions': '8',
-         'numIncorrectPredictions': '10',
-         'predictionApiTotalAccuracy': '0.4444444444444444'
+         'correct_predictions_count': '8',
+         'incorrect_predictions_count': '10',
+         'prediction_api_total_accuracy': '0.4444444444444444'
         }
 
         """
 
         if (
-            r.hget(matchID, "was_prediction_api_correct") is not None
-            or r.hget(matchID, "matchID") is None
+            r.hget(match_key, "was_prediction_api_correct") is not None
+            or r.hget(match_key, "match_key") is None
         ):
             return
-        winner = sb.get_match(matchID, ["result"])["result"]["winner"]
+        winner = sb.get_match(match_key, ["result"])["result"]["winner"]
         # update the match info to have is_statbotics correct section
-        predictionAPIPredictedWinner = r.hget(matchID, "predictionAPIPredictedWinner")
-        if (predictionAPIPredictedWinner == "red" and winner == "red") or (
-            predictionAPIPredictedWinner == "blue" and winner == "blue"
+        prediction_api_predicted_winner = r.hget(match_key, "prediction_api_predicted_winner")
+        if (prediction_api_predicted_winner == "red" and winner == "red") or (
+            prediction_api_predicted_winner == "blue" and winner == "blue"
         ):
             was_prediction_api_correct = "yes"
         else:
             was_prediction_api_correct = "no"
-        r.hset(matchID, "was_prediction_api_correct", was_prediction_api_correct)
+        r.hset(match_key, "was_prediction_api_correct", was_prediction_api_correct)
         # update overall statbotics accuracy
-        if r.hgetall("predictionApiAccuracy") == {}:
+        if r.hgetall("prediction_api_accuracy") == {}:
             r.hset(
-                "predictionApiAccuracy",
+                "prediction_api_accuracy",
                 mapping={
-                    "numCorrectPredictions": 0,
-                    "numIncorrectPredictions": 0,
-                    "predictionApiTotalAccuracy": 0.0,
+                    "correct_predictions_count": 0,
+                    "incorrect_predictions_count": 0,
+                    "prediction_api_total_accuracy": 0.0,
                 },
             )
-        databaseCorrectPredictions = int(
-            r.hget("predictionApiAccuracy", "numCorrectPredictions")
+        database_correct_predictions = int(
+            r.hget("prediction_api_accuracy", "correct_predictions_count")
         )
-        databaseIncorrectPredictions = int(
-            r.hget("predictionApiAccuracy", "numIncorrectPredictions")
+        database_incorrect_predictions = int(
+            r.hget("prediction_api_accuracy", "incorrect_predictions_count")
         )
         if was_prediction_api_correct == "yes":
-            databaseCorrectPredictions += 1
+            database_correct_predictions += 1
             r.hset(
-                "predictionApiAccuracy",
-                "numCorrectPredictions",
-                databaseCorrectPredictions,
+                "prediction_api_accuracy",
+                "correct_predictions_count",
+                database_correct_predictions,
             )
         else:
-            databaseIncorrectPredictions += 1
+            database_incorrect_predictions += 1
             r.hset(
-                "predictionApiAccuracy",
-                "numIncorrectPredictions",
-                databaseIncorrectPredictions,
+                "prediction_api_accuracy",
+                "incorrect_predictions_count",
+                database_incorrect_predictions,
             )
-        newPredictionApiAccuracy = databaseCorrectPredictions / (
-            databaseIncorrectPredictions + databaseCorrectPredictions
+        new_prediction_api_accuracy = database_correct_predictions / (
+            database_incorrect_predictions + database_correct_predictions
         )
         r.hset(
-            "predictionApiAccuracy",
-            "predictionApiTotalAccuracy",
-            newPredictionApiAccuracy,
+            "prediction_api_accuracy",
+            "prediction_api_total_accuracy",
+            new_prediction_api_accuracy,
         )
 
-    def getPredictionFromJson(self, input_predictionJsonData):
+    def get_prediction_from_json(self, input_prediction_json_data):
         """
         
         Takes in prediction json from predictionAPI
@@ -166,24 +167,24 @@ class PredictionAPI_Manager:
         """
 
         if (
-            input_predictionJsonData["red_alliance_win_confidence"]
-            > input_predictionJsonData["blue_alliance_win_confidence"]
+            input_prediction_json_data["red_alliance_win_confidence"]
+            > input_prediction_json_data["blue_alliance_win_confidence"]
         ):
             if (
-                input_predictionJsonData["draw_confidence"]
-                > input_predictionJsonData["red_alliance_win_confidence"]
+                input_prediction_json_data["draw_confidence"]
+                > input_prediction_json_data["red_alliance_win_confidence"]
             ):
-                return ("draw", input_predictionJsonData["draw_confidence"])
+                return ("draw", input_prediction_json_data["draw_confidence"])
             else:
-                return ("red", input_predictionJsonData["red_alliance_win_confidence"])
+                return ("red", input_prediction_json_data["red_alliance_win_confidence"])
         else:  # blue is more than red
             if (
-                input_predictionJsonData["draw_confidence"]
-                > input_predictionJsonData["blue_alliance_win_confidence"]
+                input_prediction_json_data["draw_confidence"]
+                > input_prediction_json_data["blue_alliance_win_confidence"]
             ):
-                return ("draw", input_predictionJsonData["draw_confidence"])
+                return ("draw", input_prediction_json_data["draw_confidence"])
             else:
                 return (
                     "blue",
-                    input_predictionJsonData["blue_alliance_win_confidence"],
+                    input_prediction_json_data["blue_alliance_win_confidence"],
                 )

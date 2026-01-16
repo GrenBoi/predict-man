@@ -16,24 +16,24 @@ class Statbotics_Manager:
         except UserWarning:
             print("not found")
 
-    def fetch_prediction(self, matchID):  
+    def fetch_prediction(self, match_key):  
         """
         Takes in match_key from TBA
         fetch_prediction Function is used for average predictions. Gets probability of red winning for a match and returns it in a tuple
         Tuple Format: (winnerPredict, red is winner probability, totalAccuracy), if match does not exist, return None
 
         """
-        if r.hexists(matchID, "statboticsRedTeamWinningProb"):
-            winProbability = r.hget(matchID, "statboticsRedTeamWinningProb")
+        if r.hexists(match_key, "statbotics_red_team_winning_prob"):
+            win_probability = r.hget(match_key, "statbotics_red_team_winning_prob")
             return (
-                r.hget(matchID, "statboticsPredictedWinner"),
-                winProbability,
-                r.hget("statboticsAccuracy", "statboticsTotalAccuracy"),
+                r.hget(match_key, "statbotics_predicted_winner"),
+                win_probability,
+                r.hget("statbotics_accuracy", "statbotics_total_accuracy"),
             )
         else:
             return None
 
-    def calculate_match_prediction(self, matchID):
+    def calculate_match_prediction(self, match_key):
         """
         
         Takes in match_key from TBA
@@ -43,31 +43,31 @@ class Statbotics_Manager:
         Example Format of Info at this time:
         Example Format of info:
         {   
-            'matchID': '2025wila_sf5m1',
-            'statboticsPredictedWinner': 'blue',
-            'statboticsRedTeamWinningProb': '0.4496',
-            'predictionAPIPredictedWinner': 'red',
-            'predictionAPIPredictedWinnerProbability': '0.5671841',
+            'match_key': '2025wila_sf5m1',
+            'statbotics_predicted_winner': 'blue',
+            'statbotics_red_team_winning_prob': '0.4496',
+            'prediction_api_predicted_winner': 'red',
+            'prediction_api_predicted_winner_probability': '0.5671841',
         }
 
         """
-        if r.hget(matchID, "matchID") is not None:
+        if r.hget(match_key, "match_key") is not None:
             return
-        redTeamWinningProb = float(
-            sb.get_match(matchID, ["pred"])["pred"]["red_win_prob"]
+        probability_red_wins = float(
+            sb.get_match(match_key, ["pred"])["pred"]["red_win_prob"]
         )
-        predictedWinner = ""
+        predicted_winner = ""
         # get winning probability
-        if redTeamWinningProb >= 0.5:
-            predictedWinner = "red"
+        if probability_red_wins >= 0.5:
+            predicted_winner = "red"
         else:
-            predictedWinner = "blue"
+            predicted_winner = "blue"
         r.hset(
-            matchID,
+            match_key,
             mapping={
-                "matchID": matchID,
-                "statboticsPredictedWinner": predictedWinner,
-                "statboticsRedTeamWinningProb": redTeamWinningProb,
+                "match_key": match_key,
+                "statbotics_predicted_winner": predicted_winner,
+                "statbotics_red_team_winning_prob": probability_red_wins,
             },
         )
 
@@ -80,83 +80,83 @@ class Statbotics_Manager:
 
         Example Format of info at this time(redis key = 2025wila_sf5m1):
         {   
-            'matchID': '2025wila_sf5m1',
-            'statboticsPredictedWinner': 'blue',
-            'statboticsRedTeamWinningProb': '0.4496',
-            'predictionAPIPredictedWinner': 'red',
-            'predictionAPIPredictedWinnerProbability': '0.5671841',
-            'actualWinner': 'red',
-            'wasStatboticsCorrect': 'no',
+            'match_key': '2025wila_sf5m1',
+            'statbotics_predicted_winner': 'blue',
+            'statbotics_red_team_winning_prob': '0.4496',
+            'prediction_api_predicted_winner': 'red',
+            'prediction_api_predicted_winner_probability': '0.5671841',
+            'actual_winner': 'red',
+            'was_statbotics_correct': 'no',
             'was_prediction_api_correct': 'yes'
         }
 
-        Accuracy Info Example(redis key = predictionApiAccuracy): 
+        Accuracy Info Example(redis key = prediction_api_accuracy): 
         {
-        'numCorrectPredictions': '8',
-         'numIncorrectPredictions': '10',
-         'predictionApiTotalAccuracy': '0.4444444444444444'
+        'correct_predictions_count': '8',
+         'incorrect_predictions_count': '10',
+         'prediction_api_total_accuracy': '0.4444444444444444'
         }
 
         """
         # if the acuracy was already checked, return early as accuracy should not be checked again
-        matchID = match_data["match_key"]
+        match_key = match_data["match_key"]
         if (
-            r.hget(matchID, "wasStatboticsCorrect") is not None
-            or r.hget(matchID, "matchID") is None
+            r.hget(match_key, "was_statbotics_correct") is not None
+            or r.hget(match_key, "match_key") is None
         ):
             return
         # find and update winner
-        winner = sb.get_match(matchID, ["result"])["result"]["winner"]
-        r.hset(matchID, "actualWinner", winner)
+        winner = sb.get_match(match_key, ["result"])["result"]["winner"]
+        r.hset(match_key, "actual_winner", winner)
         # update the match info to have is_statbotics correct section
-        redTeamWinningProb = r.hget(matchID, "statboticsRedTeamWinningProb")
-        if (float(redTeamWinningProb) >= 0.5 and winner == "red") or (
-            float(redTeamWinningProb) <= 0.5 and winner == "blue"
+        probability_red_wins = r.hget(match_key, "statbotics_red_team_winning_prob")
+        if (float(probability_red_wins) >= 0.5 and winner == "red") or (
+            float(probability_red_wins) <= 0.5 and winner == "blue"
         ):
-            wasStatboticsCorrect = "yes"
+            was_statbotics_correct = "yes"
         else:
-            wasStatboticsCorrect = "no"
-        r.hset(matchID, "wasStatboticsCorrect", wasStatboticsCorrect)
+            was_statbotics_correct = "no"
+        r.hset(match_key, "was_statbotics_correct", was_statbotics_correct)
 
         # update overall statbotics accuracy
-        if r.hgetall("statboticsAccuracy") == {}:
+        if r.hgetall("statbotics_accuracy") == {}:
             r.hset(
-                "statboticsAccuracy",
+                "statbotics_accuracy",
                 mapping={
-                    "numCorrectPredictions": 0,
-                    "numIncorrectPredictions": 0,
-                    "statboticsTotalAccuracy": 0.0,
+                    "correct_predictions_count": 0,
+                    "incorrect_predictions_count": 0,
+                    "statbotics_total_accuracy": 0.0,
                 },
             )
-        databaseCorrectPredictions = int(
-            r.hget("statboticsAccuracy", "numCorrectPredictions")
+        database_correct_predictions = int(
+            r.hget("statbotics_accuracy", "correct_predictions_count")
         )
-        databaseIncorrectPredictions = int(
-            r.hget("statboticsAccuracy", "numIncorrectPredictions")
+        database_incorrect_predictions = int(
+            r.hget("statbotics_accuracy", "incorrect_predictions_count")
         )
-        if wasStatboticsCorrect == "yes":
-            databaseCorrectPredictions += 1
+        if was_statbotics_correct == "yes":
+            database_correct_predictions += 1
             r.hset(
-                "statboticsAccuracy",
-                "numCorrectPredictions",
-                databaseCorrectPredictions,
+                "statbotics_accuracy",
+                "correct_predictions_count",
+                database_correct_predictions,
             )
         else:
-            databaseIncorrectPredictions += 1
+            database_incorrect_predictions += 1
             r.hset(
-                "statboticsAccuracy",
-                "numIncorrectPredictions",
-                databaseIncorrectPredictions,
+                "statbotics_accuracy",
+                "incorrect_predictions_count",
+                database_incorrect_predictions,
             )
-        newStatboticsTotalAccuracy = databaseCorrectPredictions / (
-            databaseIncorrectPredictions + databaseCorrectPredictions
+        new_statbotics_total_accuracy = database_correct_predictions / (
+            database_incorrect_predictions + database_correct_predictions
         )
         r.hset(
-            "statboticsAccuracy", "statboticsTotalAccuracy", newStatboticsTotalAccuracy
+            "statbotics_accuracy", "statbotics_total_accuracy", new_statbotics_total_accuracy
         )
 
         #add all data from statbotics for that match
-        self.add_complete_data(matchID)
+        self.add_complete_data(match_key)
 
-    def add_complete_data(self, matchID):
-        r.hset(matchID, "complete_statbotics_data", sb.get_match(matchID))
+    def add_complete_data(self, match_key):
+        r.hset(match_key, "complete_statbotics_data", sb.get_match(match_key))

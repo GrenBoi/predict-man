@@ -6,7 +6,7 @@ class PredictionManager:
         self.Statbotics_Manager = Statbotics_Manager()
         self.PredictionAPI_Manager = PredictionAPI_Manager()
 
-    def average_prediction(self, matchID):
+    def average_prediction(self, match_key):
         """
         
         Takes in match_key from TBA
@@ -17,15 +17,15 @@ class PredictionManager:
         # prediction red wins
         predictions = []
         total = 0.0
-        weightTotal = 0.0
-        predictions.append(self.Statbotics.fetch_prediction(matchID))
-        predictions.append(self.PredictionAPI.fetch_prediction(matchID))
+        weight_total = 0.0
+        predictions.append(self.Statbotics_Manager.fetch_prediction(match_key))
+        predictions.append(self.PredictionAPI_Manager.fetch_prediction(match_key))
         # for every prediction multiply by its accuracy so weighted average
         for prediction in predictions:
             # prediction tuple format: (winnerPredict, red is winner probability, totalAccuracy)
             if prediction is not None:
                 total += float(prediction[1]) * float(prediction[2])
-                weightTotal += float(prediction[2])
-        if weightTotal == 0.0:
+                weight_total += float(prediction[2])
+        if weight_total == 0.0:
             return None
-        return total / weightTotal
+        return total / weight_total

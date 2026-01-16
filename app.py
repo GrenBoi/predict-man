@@ -14,7 +14,7 @@ predictMan = PredictionManager()
 
 # Define a route and a view function
 @app.route("/tba", methods=["POST", "GET"])
-def recieveNotificationTBA():
+def recieve_notification_TBA():
     # If the request was not POST
     if request.method != "POST":
         return jsonify({"get": "method"}), 200
@@ -25,15 +25,15 @@ def recieveNotificationTBA():
         return {"success": "success"}, 200
     #   upcoming match
     if g_webhook_data["message_type"] == "upcoming_match":
-        getUpcomingMatchData(g_webhook_data)
+        get_upcoming_match_data(g_webhook_data)
         return {"success": "success"}, 200
     #   match score
     elif g_webhook_data["message_type"] == "match_score":
         # get match prediction for the match that is recieved
-        predictMan.Statbotics.update_accuracy(
+        predictMan.Statbotics_Manager.update_accuracy(
             g_webhook_data["message_data"]["match_key"]
         )
-        predictMan.PredictionAPI.update_accuracy(
+        predictMan.PredictionAPI_Manager.update_accuracy(
             g_webhook_data["message_data"]["match_key"]
         )
         return {"success": "success"}, 200
@@ -43,18 +43,18 @@ def recieveNotificationTBA():
 
 # add payload with {match_key: "(match key/match id)"}
 @app.route("/average_match_prediction", methods=["POST", "GET"])
-def sendMatchPrediction():
-    inputtedInfo = request.json
-    if "match_key" in inputtedInfo:
-        averageMatchPrediction = predictMan.average_prediction(inputtedInfo["match_key"])
-        if averageMatchPrediction is None:
+def send_match_prediction():
+    inputted_info = request.json
+    if "match_key" in inputted_info:
+        average_match_prediction = predictMan.average_prediction(inputted_info["match_key"])
+        if average_match_prediction is None:
             return jsonify(
                 {"Server failed to compute averages, Internal Server Error": 404}
             )
         return jsonify(
             {
                 "Average Match Prediction for: "
-                + inputtedInfo["match_key"]: averageMatchPrediction
+                + inputted_info["match_key"]: average_match_prediction
             }
         )
     else:
@@ -62,7 +62,7 @@ def sendMatchPrediction():
 
 
 #    Get upcoming match data and send prediction to the statbotics handler
-def getUpcomingMatchData(webhook_data):
+def get_upcoming_match_data(webhook_data):
     """Takes in TBA data and prints out the scheduled time of competition as well as passing data to the PredictionManager"""
     try:
         scheduled_time = webhook_data["message_data"]["scheduled_time"]
@@ -73,25 +73,11 @@ def getUpcomingMatchData(webhook_data):
         )
     except KeyError:
         print("failed to retrieve start time, but there is a match in ~7min")
-    predictMan.Statbotics.calculateMatchPrediction(
+    predictMan.Statbotics_Manager.calculate_match_prediction(
         webhook_data["message_data"]
     )
-    predictMan.PredictionAPI.calculateMatchPrediction(webhook_data["message_data"])
+    predictMan.PredictionAPI_Manager.calculate_match_prediction(webhook_data["message_data"])
 
 
-# TO FIND STATBOTICS ACCURACY, THE KEY IS "statboticsAccuracy"
-# TO FIND PREDICTION API ACCURACY, THE KEY IS "predictionApiAccuracy"
-keys_list = ['2024necmp_f1m1', '2024necmp_f1m2', '2024necmp_f1m3',"2024necmp_f1m4","2023necmp_f1m1"
-,"2023necmp_f1m2","2023necmp_f1m3","2024casj_qm1","2024casj_qm2","2024casj_qm3","2024casj_qm4", "statboticsAccuracy","predictionApiAccuracy","2025wila_f1m1","2025wila_f1m2"]
-#r.delete(*keys_list)
-all_keys = r.keys('*')
-print(f"Found {len(all_keys)} keys.")
-#print(f"Found {all_keys} keys.")
-for key in all_keys:
-
-    #print(r.hgetall(key))
-    #print()
-
-    pass
-#print(predictMan.average_prediction("2023necmp_f1m1"))
-#print(r.hgetall("2024necmp_f1m2"))
+# TO FIND STATBOTICS ACCURACY, THE KEY IS "statbotics_accuracy"
+# TO FIND PREDICTION API ACCURACY, THE KEY IS "prediction_api_accuracy"
