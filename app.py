@@ -294,21 +294,24 @@ def recieveNotificationTBA():
         )
         return {"success": "success"}, 200
     else:
-        return jsonify({"fail": "failed"}), 200
+        return jsonify({"fail": "failed"}), 400
 
 
-# add payload with {match_key: "(matchkey/matchid)"}
+# add payload with {match_key: "(match key/match id)"}
 @app.route("/average_match_prediction", methods=["POST", "GET"])
 def sendMatchPrediction():
     inputtedInfo = request.json
-    return jsonify(
-        {
-            "Average Match Prediction for: "
-            + inputtedInfo["match_key"]: predictMan.averagePrediction(
-                inputtedInfo["match_key"]
-            )
-        }
-    )
+    if "match_key" in inputtedInfo:
+        return jsonify(
+            {
+                "Average Match Prediction for: "
+                + inputtedInfo["match_key"]: predictMan.averagePrediction(
+                    inputtedInfo["match_key"]
+                )
+            }
+        )
+    else:
+        return jsonify({"match_key could not be found in incoming json":400})
 
 
 #    Get upcoming match data and send prediction to the statbotics handler
