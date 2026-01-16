@@ -1,15 +1,17 @@
 import redis
 import statbotics
+import requests
 
 prediction_api_url = "https://match.api.apisb.me/prediction"
 r = redis.Redis(host="192.168.100.2", port=6379, decode_responses=True)
 sb = statbotics.Statbotics()
 
+
 class PredictionAPI_Manager:
     def __init__(self):
         pass
 
-    def fetch_prediction(self, match_key):  
+    def fetch_prediction(self, match_key):
         """
 
         Takes in match_key from TBA
@@ -19,7 +21,9 @@ class PredictionAPI_Manager:
         """
 
         if r.hexists(match_key, "prediction_api_predicted_winner"):
-            win_probability = r.hget(match_key, "prediction_api_predicted_winner_probability")
+            win_probability = r.hget(
+                match_key, "prediction_api_predicted_winner_probability"
+            )
             if r.hget(match_key, "prediction_api_predicted_winner") == "blue":
                 # changes red probability of win to blue for format
                 win_probability = 1 - r.hget(
@@ -35,17 +39,17 @@ class PredictionAPI_Manager:
 
     def calculate_match_prediction(self, match_data):
         """
-        
+
         Takes in Match Data from TBA
-        calculate_match_prediction Function is used to put initial match prediction data into Redis. 
+        calculate_match_prediction Function is used to put initial match prediction data into Redis.
         Is called from TBA by upcoming_match notification
         Calls predictionAPI to get a json file in this format:
         {
-            blue_alliance_win_confidence : 
-            draw_confidence : 
-            red_alliance_win_confidence : 
+            blue_alliance_win_confidence :
+            draw_confidence :
+            red_alliance_win_confidence :
         }
-        
+
         """
         teams = match_data["team_keys"]
         match_key = match_data["match_key"]
@@ -73,18 +77,20 @@ class PredictionAPI_Manager:
         )  # api code to get prediction
         r.hset(match_key, "prediction_api_predicted_winner", prediction_json_data[0])
         r.hset(
-            match_key, "prediction_api_predicted_winner_probability", prediction_json_data[1]
+            match_key,
+            "prediction_api_predicted_winner_probability",
+            prediction_json_data[1],
         )
 
     def update_accuracy(self, match_key):
         """
-        
+
         Takes in match_key Data from TBA
-        update_accuracy Function is used to put match predicion data into Redis and to update accuracy of Statbotics. 
+        update_accuracy Function is used to put match predicion data into Redis and to update accuracy of Statbotics.
         Is called from TBA by match_score notification
 
         Example Format of info at this time(redis key = 2025wila_sf5m1):
-        {   
+        {
             'match_key': '2025wila_sf5m1',
             'statbotics_predicted_winner': 'blue',
             'statbotics_red_team_winning_prob': '0.4496',
@@ -95,7 +101,7 @@ class PredictionAPI_Manager:
             'was_prediction_api_correct': 'yes'
         }
 
-        Accuracy Info Example(redis key = prediction_api_accuracy): 
+        Accuracy Info Example(redis key = prediction_api_accuracy):
         {
          'correct_predictions_count': '8',
          'incorrect_predictions_count': '10',
@@ -111,7 +117,9 @@ class PredictionAPI_Manager:
             return
         winner = sb.get_match(match_key, ["result"])["result"]["winner"]
         # update the match info to have is_statbotics correct section
-        prediction_api_predicted_winner = r.hget(match_key, "prediction_api_predicted_winner")
+        prediction_api_predicted_winner = r.hget(
+            match_key, "prediction_api_predicted_winner"
+        )
         if (prediction_api_predicted_winner == "red" and winner == "red") or (
             prediction_api_predicted_winner == "blue" and winner == "blue"
         ):
@@ -160,7 +168,7 @@ class PredictionAPI_Manager:
 
     def get_prediction_from_json(self, input_prediction_json_data):
         """
-        
+
         Takes in prediction json from predictionAPI
         Outputs who the prediction api thinks is going to win: "blue","red", or "draw"
 
@@ -176,7 +184,10 @@ class PredictionAPI_Manager:
             ):
                 return ("draw", input_prediction_json_data["draw_confidence"])
             else:
-                return ("red", input_prediction_json_data["red_alliance_win_confidence"])
+                return (
+                    "red",
+                    input_prediction_json_data["red_alliance_win_confidence"],
+                )
         else:  # blue is more than red
             if (
                 input_prediction_json_data["draw_confidence"]

@@ -1,16 +1,15 @@
 from flask import Flask, request, jsonify
-
 import time
-import requests
-
 import redis
 
 from prediction_manager import PredictionManager
+
 r = redis.Redis(host="192.168.100.2", port=6379, decode_responses=True)
 
 app = Flask(__name__)
 g_webhook_data = {}
 predictMan = PredictionManager()
+
 
 # Define a route and a view function
 @app.route("/tba", methods=["POST", "GET"])
@@ -46,7 +45,9 @@ def recieve_notification_TBA():
 def send_match_prediction():
     inputted_info = request.json
     if "match_key" in inputted_info:
-        average_match_prediction = predictMan.average_prediction(inputted_info["match_key"])
+        average_match_prediction = predictMan.average_prediction(
+            inputted_info["match_key"]
+        )
         if average_match_prediction is None:
             return jsonify(
                 {"Server failed to compute averages, Internal Server Error": 404}
@@ -76,7 +77,9 @@ def get_upcoming_match_data(webhook_data):
     predictMan.Statbotics_Manager.calculate_match_prediction(
         webhook_data["message_data"]
     )
-    predictMan.PredictionAPI_Manager.calculate_match_prediction(webhook_data["message_data"])
+    predictMan.PredictionAPI_Manager.calculate_match_prediction(
+        webhook_data["message_data"]
+    )
 
 
 # TO FIND STATBOTICS ACCURACY, THE KEY IS "statbotics_accuracy"

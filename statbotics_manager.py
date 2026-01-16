@@ -4,6 +4,7 @@ import statbotics
 r = redis.Redis(host="192.168.100.2", port=6379, decode_responses=True)
 sb = statbotics.Statbotics()
 
+
 class Statbotics_Manager:
     def __init__(self):
         pass
@@ -16,7 +17,7 @@ class Statbotics_Manager:
         except UserWarning:
             print("not found")
 
-    def fetch_prediction(self, match_key):  
+    def fetch_prediction(self, match_key):
         """
         Takes in match_key from TBA
         fetch_prediction Function is used for average predictions. Gets probability of red winning for a match and returns it in a tuple
@@ -35,14 +36,14 @@ class Statbotics_Manager:
 
     def calculate_match_prediction(self, match_key):
         """
-        
+
         Takes in match_key from TBA
-        calculate_match_prediction Function is used to put initial match prediction data into Redis. 
+        calculate_match_prediction Function is used to put initial match prediction data into Redis.
         Is called from TBA by upcoming_match notification
-        
+
         Example Format of Info at this time:
         Example Format of info:
-        {   
+        {
             'match_key': '2025wila_sf5m1',
             'statbotics_predicted_winner': 'blue',
             'statbotics_red_team_winning_prob': '0.4496',
@@ -73,13 +74,13 @@ class Statbotics_Manager:
 
     def update_accuracy(self, match_data):
         """
-        
+
         Takes in Match Data from TBA
-        update_accuracy Function is used to put match predicion data into Redis and to update accuracy of Statbotics. 
+        update_accuracy Function is used to put match predicion data into Redis and to update accuracy of Statbotics.
         Is called from TBA by match_score notification
 
         Example Format of info at this time(redis key = 2025wila_sf5m1):
-        {   
+        {
             'match_key': '2025wila_sf5m1',
             'statbotics_predicted_winner': 'blue',
             'statbotics_red_team_winning_prob': '0.4496',
@@ -90,7 +91,7 @@ class Statbotics_Manager:
             'was_prediction_api_correct': 'yes'
         }
 
-        Accuracy Info Example(redis key = prediction_api_accuracy): 
+        Accuracy Info Example(redis key = prediction_api_accuracy):
         {
         'correct_predictions_count': '8',
          'incorrect_predictions_count': '10',
@@ -152,10 +153,12 @@ class Statbotics_Manager:
             database_incorrect_predictions + database_correct_predictions
         )
         r.hset(
-            "statbotics_accuracy", "statbotics_total_accuracy", new_statbotics_total_accuracy
+            "statbotics_accuracy",
+            "statbotics_total_accuracy",
+            new_statbotics_total_accuracy,
         )
 
-        #add all data from statbotics for that match
+        # add all data from statbotics for that match
         self.add_complete_data(match_key)
 
     def add_complete_data(self, match_key):

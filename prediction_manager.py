@@ -1,5 +1,6 @@
-from statbotics_manager import Statbotics_Manager 
+from statbotics_manager import Statbotics_Manager
 from predction_api_manager import PredictionAPI_Manager
+
 
 class PredictionManager:
     def __init__(self):
@@ -8,7 +9,7 @@ class PredictionManager:
 
     def average_prediction(self, match_key):
         """
-        
+
         Takes in match_key from TBA
         average_prediction Function gets a match prediction from all the rediction softwares under it and averages them out.
         The average uses a weighted system based on the accuracy of the prediction softwares in past matches
