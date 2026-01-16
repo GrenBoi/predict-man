@@ -86,10 +86,11 @@ class PredictionAPI:
     def fetchPrediction(self, matchID):#function for average prediction
         #returns a tuple of (winnerPredict, red is winner probability, totalAccuracy), if not there return None
         if r.hexists(matchID, "predictionAPIPredictedWinner"):
+            winProbability = r.hgetall(matchID)["predictionAPIPredictedWinnerProbability"]
             if r.hgetall(matchID)["predictionAPIPredictedWinner"] == "blue":
                 #changes red probability of win to blue for format
                 winProbability = 1 - r.hgetall(matchID)["predictionAPIPredictedWinnerProbability"]
-            return (r.hgetall(matchID)["predictionAPIPredictedWinner"],r.hgetall(matchID)["predictionAPIPredictedWinnerProbability"],r.hgetall("predictionApiAccuracy")["predictionApiTotalAccuracy"])
+            return (r.hgetall(matchID)["predictionAPIPredictedWinner"], winProbability,r.hgetall("predictionApiAccuracy")["predictionApiTotalAccuracy"])
         else:
             return None
     def calculateMatchPrediction(self, match_data):
