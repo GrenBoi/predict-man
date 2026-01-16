@@ -180,9 +180,8 @@ predictMan = PredictionManager()
 
     # Define a route and a view function
 @app.route('/tba', methods=["POST", "GET"])
-def notifyMatchStart():
+def recieveNotificationTBA():
     # If the request was not POST
-    
     if request.method != "POST":
         return jsonify({"get": "method"}), 200
         
@@ -203,6 +202,12 @@ def notifyMatchStart():
     else:
         return jsonify({"fail": "failed"}), 200
 
+#add payload with {match_key: "(matchkey/matchid)"}
+@app.route('/average_match_prediction', methods=["POST", "GET"])
+def sendMatchPrediction():
+    inputtedInfo = request.json
+    return jsonify({"Average Match Prediction for: "+ inputtedInfo["match_key"]: predictMan.averagePrediction(inputtedInfo["match_key"])})
+
 #    Get upcoming match data and send prediction to the statbotics handler
 def getUpcomingMatchData(webhook_data):
     try:
@@ -213,19 +218,4 @@ def getUpcomingMatchData(webhook_data):
     predictMan.Statbotics.calculateMatchPrediction(webhook_data["message_data"]["match_key"])
     predictMan.PredictionAPI.calculateMatchPrediction(webhook_data["message_data"])
 #TO FIND STATBOTICS ACCURACY, THE KEY IS "statboticsAccuracy"
-
-
-keys_list = ['2024necmp_f1m1', '2024necmp_f1m2', '2024necmp_f1m3',"2024necmp_f1m4","2023necmp_f1m1"
-,"2023necmp_f1m2","2023necmp_f1m3","2024casj_qm1","2024casj_qm2","2024casj_qm3","2024casj_qm4", "statboticsAccuracy","predictionApiAccuracy","2025wila_f1m1","2025wila_f1m2"]
-#r.delete(*keys_list)
-all_keys = r.keys('*')
-print(f"Found {len(all_keys)} keys.")
-#print(f"Found {all_keys} keys.")
-for key in all_keys:
-
-    #print(r.hgetall(key))
-    #print()
-
-    pass
-#print(predictMan.averagePrediction("2023necmp_f1m1"))
-#print(r.hgetall("2024necmp_f1m2"))
+#TO FIND PREDICTION API ACCURACY, THE KEY IS "predictionApiAccuracy"
