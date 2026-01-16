@@ -25,11 +25,11 @@ class Statbotics:
     def fetchPrediction(self, matchID):  # function for average prediction
         # returns a tuple of (winnerPredict, red is winner probability, totalAccuracy), if not exist return None
         if r.hexists(matchID, "statboticsRedTeamWinningProb"):
-            winProbability = r.hgetall(matchID)["statboticsRedTeamWinningProb"]
+            winProbability = r.hget(matchID,"statboticsRedTeamWinningProb")
             return (
-                r.hgetall(matchID)["statboticsPredictedWinner"],
+                r.hget(matchID,"statboticsPredictedWinner"),
                 winProbability,
-                r.hgetall("statboticsAccuracy")["statboticsTotalAccuracy"],
+                r.hget("statboticsAccuracy","statboticsTotalAccuracy"),
             )
         else:
             return None
@@ -66,7 +66,7 @@ class Statbotics:
         winner = sb.get_match(matchID, ["result"])["result"]["winner"]
         r.hset(matchID, "actualWinner", winner)
         # update the match info to have is_statbotics correct section
-        redTeamWinningProb = r.hgetall(matchID)["statboticsRedTeamWinningProb"]
+        redTeamWinningProb = r.hget(matchID,"statboticsRedTeamWinningProb")
         if (float(redTeamWinningProb) >= 0.5 and winner == "red") or (
             float(redTeamWinningProb) <= 0.5 and winner == "blue"
         ):
@@ -124,18 +124,16 @@ class PredictionAPI:
     def fetchPrediction(self, matchID):  # function for average prediction
         # returns a tuple of (winnerPredict, red is winner probability, totalAccuracy), if not there return None
         if r.hexists(matchID, "predictionAPIPredictedWinner"):
-            winProbability = r.hgetall(matchID)[
-                "predictionAPIPredictedWinnerProbability"
-            ]
-            if r.hgetall(matchID)["predictionAPIPredictedWinner"] == "blue":
+            winProbability = r.hget(matchID, "predictionAPIPredictedWinnerProbability")
+            if r.hget(matchID,"predictionAPIPredictedWinner") == "blue":
                 # changes red probability of win to blue for format
                 winProbability = (
-                    1 - r.hgetall(matchID)["predictionAPIPredictedWinnerProbability"]
+                    1 - r.hget(matchID,"predictionAPIPredictedWinnerProbability")
                 )
             return (
-                r.hgetall(matchID)["predictionAPIPredictedWinner"],
+                r.hget(matchID,"predictionAPIPredictedWinner"),
                 winProbability,
-                r.hgetall("predictionApiAccuracy")["predictionApiTotalAccuracy"],
+                r.hget("predictionApiAccuracy","predictionApiTotalAccuracy"),
             )
         else:
             return None
@@ -171,9 +169,7 @@ class PredictionAPI:
             return
         winner = sb.get_match(matchID, ["result"])["result"]["winner"]
         # update the match info to have is_statbotics correct section
-        predictionAPIPredictedWinner = r.hgetall(matchID)[
-            "predictionAPIPredictedWinner"
-        ]
+        predictionAPIPredictedWinner = r.hget(matchID, "predictionAPIPredictedWinner")
         if (predictionAPIPredictedWinner == "red" and winner == "red") or (
             predictionAPIPredictedWinner == "blue" and winner == "blue"
         ):
