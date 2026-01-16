@@ -21,6 +21,8 @@ class Statbotics:
             print('not found')
 
     def getMatchPrediction(self,matchID):
+        if r.hget(matchID,"matchID") != None:
+            return
         redTeamWinningProb = float(sb.get_match(matchID,["pred"])["pred"]["red_win_prob"])
         predictedWinner = ""
         #get winning probability
@@ -40,9 +42,10 @@ class Statbotics:
             return
         #find and update winner
         winner = sb.get_match(matchID,["result"])["result"]["winner"]
+        print(sb.get_match(matchID,["result"]))
         r.hset(matchID, "actualWinner", winner)
         #update the match info to have is_statbotics correct section
-        redTeamWinningProb = r.hgetall(matchID)["redTeamWinningProb"]
+        redTeamWinningProb = r.hgetall(matchID)["statboticsRedTeamWinningProb"]
         if (float(redTeamWinningProb) >= 0.5 and winner == "red") or (float(redTeamWinningProb) <= 0.5 and winner == "blue"):
             wasStatboticsCorrect = "yes"
         else:
@@ -85,10 +88,10 @@ class PredictionAPI:
             "team-blue-3" : teams[5]
         }
         response = requests.post(predictionAPIurl, payload)
-        inputMatchPrediction(response.json(), matchID)
+        self.inputMatchPrediction(response.json(), matchID)
         
     def inputMatchPrediction(self, returnJson, matchID):
-        predictionJsonData = getPredictionFromJson(returnJson)#api code to get prediction
+        predictionJsonData = self.getPredictionFromJson(returnJson)#api code to get prediction
         r.hset(matchID, "predictionAPIPredictedWinner", predictionJsonData[0])
         r.hset(matchID, "predictionAPIPredictedWinnerProbability", predictionJsonData[1])
     
@@ -97,36 +100,36 @@ class PredictionAPI:
             return
         winner = sb.get_match(matchID,["result"])["result"]["winner"]
         #update the match info to have is_statbotics correct section
-        redTeamWinningProb = r.hgetall(matchID)["redTeamWinningProb"]
-        if (float(redTeamWinningProb) >= 0.5 and winner == "red") or (float(redTeamWinningProb) <= 0.5 and winner == "blue"):
-            wasStatboticsCorrect = "yes"
+        predictionAPIPredictedWinner = r.hgetall(matchID)["predictionAPIPredictedWinner"]
+        if (predictionAPIPredictedWinner == "red" and winner == "red") or (predictionAPIPredictedWinner == "blue" and winner == "blue"):
+            wasPredictionApiCorrect = "yes"
         else:
-            wasStatboticsCorrect = "no"
-        r.hset(matchID, "wasStatboticsCorrect", wasStatboticsCorrect)
+            wasPredictionApiCorrect = "no"
+        r.hset(matchID, "wasPredictionApiCorrect", wasPredictionApiCorrect)
         #update overall statbotics accuracy
-        if r.hgetall("statboticsAccuracy") == {}:
-            r.hset("statboticsAccuracy", mapping={
+        if r.hgetall("predictionApiAccuracy") == {}:
+            r.hset("predictionApiAccuracy", mapping={
                 "numCorrectPredictions":0,
                 'numIncorrectPredictions': 0,
-                "statboticsTotalAccuracy": 0.0,
+                "predictionApiTotalAccuracy": 0.0,
             })
-        databaseCorrectPredictions = int(r.hget("statboticsAccuracy","numCorrectPredictions"))
-        databaseIncorrectPredictions = int(r.hget("statboticsAccuracy","numIncorrectPredictions"))
-        if wasStatboticsCorrect == "yes":
+        databaseCorrectPredictions = int(r.hget("predictionApiAccuracy","numCorrectPredictions"))
+        databaseIncorrectPredictions = int(r.hget("predictionApiAccuracy","numIncorrectPredictions"))
+        if wasPredictionApiCorrect == "yes":
             databaseCorrectPredictions += 1
-            r.hset("statboticsAccuracy", "numCorrectPredictions", databaseCorrectPredictions)
+            r.hset("predictionApiAccuracy", "numCorrectPredictions", databaseCorrectPredictions)
         else:
             databaseIncorrectPredictions += 1
-            r.hset("statboticsAccuracy", "numIncorrectPredictions", databaseIncorrectPredictions)
-        newStatboticsTotalAccuracy = databaseCorrectPredictions/(databaseIncorrectPredictions + databaseCorrectPredictions)
-        r.hset("statboticsAccuracy", "statboticsTotalAccuracy", newStatboticsTotalAccuracy)
+            r.hset("predictionApiAccuracy", "numIncorrectPredictions", databaseIncorrectPredictions)
+        newPredictionApiAccuracy = databaseCorrectPredictions/(databaseIncorrectPredictions + databaseCorrectPredictions)
+        r.hset("predictionApiAccuracy", "predictionApiTotalAccuracy", newPredictionApiAccuracy)
 
     def getPredictionFromJson(self,input_predictionJsonData):
         if input_predictionJsonData["red_alliance_win_confidence"] > input_predictionJsonData["blue_alliance_win_confidence"]:
             if input_predictionJsonData["draw_confidence"] > input_predictionJsonData["red_alliance_win_confidence"]:
                 return ("draw",input_predictionJsonData["draw_confidence"])
             else:
-                return("red",red_alliance_win_confidence)
+                return("red",input_predictionJsonData["red_alliance_win_confidence"])
         else:#blue is more than red
             if input_predictionJsonData["draw_confidence"] > input_predictionJsonData["blue_alliance_win_confidence"]:
                 return ("draw",input_predictionJsonData["draw_confidence"])
@@ -150,11 +153,14 @@ predictMan = PredictionManager()
 @app.route('/tba', methods=["POST", "GET"])
 def notifyMatchStart():
     # If the request was not POST
+    
     if request.method != "POST":
         return jsonify({"get": "method"}), 200
         
     g_webhook_data = request.json
-
+    if g_webhook_data["message_type"] == "verification":
+        print(g_webhook_data)
+        return {"success": "success"}, 200
     #   upcoming match
     if g_webhook_data["message_type"] == "upcoming_match":
         getUpcomingMatchData(g_webhook_data)
@@ -163,6 +169,7 @@ def notifyMatchStart():
     elif g_webhook_data["message_type"] == "match_score":
         #get match prediction for the match that is recieved
         predictMan.Statbotics.updateAccuracy(g_webhook_data["message_data"]["match_key"])
+        predictMan.PredictionAPI.updateAccuracy(g_webhook_data["message_data"]["match_key"])
         return {"success": "success"}, 200 
     else:
         return jsonify({"fail": "failed"}), 200
@@ -171,7 +178,7 @@ def notifyMatchStart():
 def getUpcomingMatchData(webhook_data):
     try:
         scheduled_time = webhook_data["message_data"]["scheduled_time"]
-        print("Scheduled Time: " + time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(scheduled_time)))
+        print("Scheduled Time: " + time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(scheduled_time)) + "\n")
     except:
         print("failed to retrieve start time, but there is a match in ~7min")
     predictMan.Statbotics.getMatchPrediction(webhook_data["message_data"]["match_key"])
@@ -179,4 +186,15 @@ def getUpcomingMatchData(webhook_data):
 #TO FIND STATBOTICS ACCURACY, THE KEY IS "statboticsAccuracy"
 
 
-
+keys_list = ['2024necmp_f1m1', '2024necmp_f1m2', '2024necmp_f1m3',"2024necmp_f1m4","2023necmp_f1m1"
+,"2023necmp_f1m2","2023necmp_f1m3","2024casj_qm1","2024casj_qm2","2024casj_qm3","2024casj_qm4, statboticsAccuracy, predictionApiAccuracy"]
+#r.delete(*keys_list)
+all_keys = r.keys('*')
+print(f"Found {len(all_keys)} keys.")
+print(f"Found {all_keys} keys.")
+for key in all_keys:
+    
+    #print(r.hgetall(key))
+    #print()
+    
+    pass
