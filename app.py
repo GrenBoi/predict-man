@@ -260,6 +260,8 @@ class PredictionManager:
             if prediction is not None:
                 total += float(prediction[1]) * float(prediction[2])
                 weightTotal += float(prediction[2])
+        if weightTotal == 0.0:
+            return None
         return total / weightTotal
 
 
@@ -302,12 +304,14 @@ def recieveNotificationTBA():
 def sendMatchPrediction():
     inputtedInfo = request.json
     if "match_key" in inputtedInfo:
+        averageMatchPrediction = predictMan.averagePrediction(inputtedInfo["match_key"])
+        if averageMatchPrediction is None:
+            return jsonify({"Server failed to compute averages, Internal Server Error":404})
         return jsonify(
             {
                 "Average Match Prediction for: "
-                + inputtedInfo["match_key"]: predictMan.averagePrediction(
-                    inputtedInfo["match_key"]
-                )
+                + inputtedInfo["match_key"]: 
+                averageMatchPrediction
             }
         )
     else:
