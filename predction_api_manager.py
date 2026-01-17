@@ -82,7 +82,7 @@ class PredictionAPI_Manager:
             prediction_json_data[1],
         )
 
-    def update_accuracy(self, match_key):
+    def update_accuracy(self, match_data):
         """
 
         Takes in match_key Data from TBA
@@ -110,6 +110,7 @@ class PredictionAPI_Manager:
 
         """
 
+        match_key = match_data["match_key"]
         if (
             r.hget(match_key, "was_prediction_api_correct") is not None
             or r.hget(match_key, "match_key") is None

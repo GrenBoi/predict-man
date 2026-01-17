@@ -34,7 +34,7 @@ class Statbotics_Manager:
         else:
             return None
 
-    def calculate_match_prediction(self, match_key):
+    def calculate_match_prediction(self, match_data):
         """
 
         Takes in match_key from TBA
@@ -52,7 +52,8 @@ class Statbotics_Manager:
         }
 
         """
-        if r.hget(match_key, "match_key") is not None:
+        match_key = match_data["match_key"]
+        if r.exists(match_key) is True:
             return
         probability_red_wins = float(
             sb.get_match(match_key, ["pred"])["pred"]["red_win_prob"]
@@ -99,8 +100,8 @@ class Statbotics_Manager:
         }
 
         """
-        # if the acuracy was already checked, return early as accuracy should not be checked again
         match_key = match_data["match_key"]
+        # if the acuracy was already checked, return early as accuracy should not be checked again
         if (
             r.hget(match_key, "was_statbotics_correct") is not None
             or r.hget(match_key, "match_key") is None
@@ -108,6 +109,11 @@ class Statbotics_Manager:
             return
         # find and update winner
         winner = sb.get_match(match_key, ["result"])["result"]["winner"]
+
+        #If there is an error with TBA, some match scores will have a None value so we attempt to catch that here
+        if winner == None:
+            return 
+
         r.hset(match_key, "actual_winner", winner)
         # update the match info to have is_statbotics correct section
         probability_red_wins = r.hget(match_key, "statbotics_red_team_winning_prob")
@@ -159,7 +165,17 @@ class Statbotics_Manager:
         )
 
         # add all data from statbotics for that match
-        self.add_complete_data(match_key)
+        self.add_complete_data(match_data)
 
-    def add_complete_data(self, match_key):
-        r.hset(match_key, "complete_statbotics_data", sb.get_match(match_key))
+    def add_complete_data(self, match_data):
+        match_key = match_data["match_key"]
+        match_key_score = match_key+":score"
+        r.hset(match_key, "match_key_score", match_key_score)
+        r.hset(
+            match_key_score,
+            mapping={
+                "match_key": match_key,
+                "statbotics_predicted_winner": predicted_winner,
+                "statbotics_red_team_winning_prob": probability_red_wins,
+            },
+        )
