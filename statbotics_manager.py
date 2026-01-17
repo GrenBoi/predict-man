@@ -1,5 +1,6 @@
 import redis
 import statbotics
+import json
 
 r = redis.Redis(host="192.168.100.2", port=6379, decode_responses=True)
 sb = statbotics.Statbotics()
@@ -103,12 +104,13 @@ class Statbotics_Manager:
         match_key = match_data["match_key"]
         # if the acuracy was already checked, return early as accuracy should not be checked again
         if (
-            r.hget(match_key, "was_statbotics_correct") is not None
-            or r.hget(match_key, "match_key") is None
+            r.exists(match_key, "was_statbotics_correct") == 1
+            or  r.exists(match_key, "match_key") == 0
         ):
-            return
+            pass
         # find and update winner
-        winner = sb.get_match(match_key, ["result"])["result"]["winner"]
+        statbotics_match_data = sb.get_match(match_key)
+        winner = statbotics_match_data["result"]["winner"]
 
         #If there is an error with TBA, some match scores will have a None value so we attempt to catch that here
         if winner == None:
@@ -165,17 +167,14 @@ class Statbotics_Manager:
         )
 
         # add all data from statbotics for that match
-        self.add_complete_data(match_data)
+        self.add_complete_data(match_key, statbotics_match_data)
 
-    def add_complete_data(self, match_data):
-        match_key = match_data["match_key"]
+    def add_complete_data(self, match_key, statbotics_match_data):
         match_key_score = match_key+":score"
+        print("doing json stuff")
         r.hset(match_key, "match_key_score", match_key_score)
-        r.hset(
-            match_key_score,
-            mapping={
-                "match_key": match_key,
-                "statbotics_predicted_winner": predicted_winner,
-                "statbotics_red_team_winning_prob": probability_red_wins,
-            },
-        )
+        print(statbotics_match_data)
+        json_string = json.dumps(statbotics_match_data)
+        r.set(match_key_score, json_string)
+        print(json_string)
+#print(sb.get_match("2024necmp_f1m2"))

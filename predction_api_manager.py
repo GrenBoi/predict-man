@@ -112,8 +112,8 @@ class PredictionAPI_Manager:
 
         match_key = match_data["match_key"]
         if (
-            r.hget(match_key, "was_prediction_api_correct") is not None
-            or r.hget(match_key, "match_key") is None
+            r.exists(match_key, "was_prediction_api_correct")
+            or r.exists(match_key, "match_key")
         ):
             return
         winner = sb.get_match(match_key, ["result"])["result"]["winner"]
