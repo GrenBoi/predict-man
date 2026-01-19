@@ -26,9 +26,9 @@ class PredictionAPI_Manager:
             )
             if r.hget(match_key, "prediction_api_predicted_winner") == "blue":
                 # changes red probability of win to blue for format
-                win_probability = 1 - r.hget(
+                win_probability = 1 - float(r.hget(
                     match_key, "prediction_api_predicted_winner_probability"
-                )
+                ))
             return (
                 r.hget(match_key, "prediction_api_predicted_winner"),
                 win_probability,
@@ -112,8 +112,8 @@ class PredictionAPI_Manager:
 
         match_key = match_data["match_key"]
         if (
-            r.exists(match_key, "was_prediction_api_correct")
-            or r.exists(match_key, "match_key")
+            r.hexists(match_key, "was_prediction_api_correct")
+            or not r.hexists(match_key, "match_key")
         ):
             return
         winner = sb.get_match(match_key, ["result"])["result"]["winner"]

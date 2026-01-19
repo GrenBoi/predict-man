@@ -104,8 +104,8 @@ class Statbotics_Manager:
         match_key = match_data["match_key"]
         # if the acuracy was already checked, return early as accuracy should not be checked again
         if (
-            r.exists(match_key, "was_statbotics_correct") == 1
-            or  r.exists(match_key, "match_key") == 0
+            r.hexists(match_key, "was_statbotics_correct")
+            or not r.hexists(match_key, "match_key")
         ):
             pass
         # find and update winner
@@ -126,7 +126,6 @@ class Statbotics_Manager:
         else:
             was_statbotics_correct = "no"
         r.hset(match_key, "was_statbotics_correct", was_statbotics_correct)
-
         # update overall statbotics accuracy
         if r.hgetall("statbotics_accuracy") == {}:
             r.hset(
@@ -171,10 +170,6 @@ class Statbotics_Manager:
 
     def add_complete_data(self, match_key, statbotics_match_data):
         match_key_score = match_key+":score"
-        print("doing json stuff")
         r.hset(match_key, "match_key_score", match_key_score)
-        print(statbotics_match_data)
         json_string = json.dumps(statbotics_match_data)
         r.set(match_key_score, json_string)
-        print(json_string)
-#print(sb.get_match("2024necmp_f1m2"))

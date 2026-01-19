@@ -52,7 +52,7 @@ def send_match_prediction():
             )
         return jsonify(
             {
-                "Average Match Prediction for: "
+                "Average Chance Red Wins Match Prediction for: "
                 + inputted_info["match_key"]: average_match_prediction
             }
         )
