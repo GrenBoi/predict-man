@@ -20,9 +20,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # Runtime stage
 FROM python:3.12-slim
 
-# Install cron and curl (for cron job HTTP requests)
+# Install curl and gosu
 RUN apt-get update && \
-    apt-get install -y cron curl gosu && \
+    apt-get install -y curl gosu && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
@@ -37,6 +37,10 @@ COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 # Copy application code
 COPY --chown=appuser:appuser . .
 
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Set environment
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
@@ -49,4 +53,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/ || exit 1
 
 # Set entrypoint (run as root, will drop privileges for app)
-CMD ["uv", "run", "flask", "run", "--port=8000", "--host=0.0.0.0"]
+ENTRYPOINT ["/entrypoint.sh"]
+
