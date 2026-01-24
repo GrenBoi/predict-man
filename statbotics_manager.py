@@ -113,12 +113,11 @@ class Statbotics_Manager:
         winner = statbotics_match_data["result"]["winner"]
 
         #If there is an error with TBA, some match scores will have a None value so we attempt to catch that here
-        if winner == None:
+        probability_red_wins = r.hget(match_key, "statbotics_red_team_winning_prob")
+        if winner == None or probability_red_wins == None:
             return 
-
         r.hset(match_key, "actual_winner", winner)
         # update the match info to have is_statbotics correct section
-        probability_red_wins = r.hget(match_key, "statbotics_red_team_winning_prob")
         if (float(probability_red_wins) >= 0.5 and winner == "red") or (
             float(probability_red_wins) <= 0.5 and winner == "blue"
         ):
