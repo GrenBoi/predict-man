@@ -1,0 +1,26 @@
+services:
+  prediction-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: prediction-manager
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  redis:
+    image: redis/redis-stack:latest
+    environment:
+      - REDIS_ARGS --appendonly yes --save 30 1 --protected-mode no
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/redis-stack.conf
+
+volumes:
+  redis-data:
