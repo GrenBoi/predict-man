@@ -107,7 +107,7 @@ class Statbotics_Manager:
             r.hexists(match_key, "was_statbotics_correct")
             or not r.hexists(match_key, "match_key")
         ):
-            pass
+            return
         # find and update winner
         statbotics_match_data = sb.get_match(match_key)
         winner = statbotics_match_data["result"]["winner"]

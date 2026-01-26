@@ -81,7 +81,7 @@ def get_upcoming_match_data(webhook_data):
             + "\n"
         )
     except KeyError:
-        print("failed to retrieve start time, but there is a match in ~7min")
+        print("Failed to retrieve start time, but there is a match in ~7min")
     predictMan.Statbotics_Manager.calculate_match_prediction(
         webhook_data["message_data"]
     )
