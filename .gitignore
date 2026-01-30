@@ -1,4 +1,4 @@
 .venv/
-myenv/
+myenv
 .ruff_cache/
 __pycache__/

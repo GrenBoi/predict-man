@@ -3,7 +3,7 @@ import statbotics
 import requests
 
 prediction_api_url = "https://match.api.apisb.me/prediction"
-r = redis.Redis(host="192.168.100.2", port=6379, decode_responses=True)
+r = redis.Redis(host="192.168.100.2", port=6380, decode_responses=True)
 sb = statbotics.Statbotics()
 
 

@@ -4,7 +4,7 @@ import redis
 import json
 
 from prediction_manager import PredictionManager
-r = redis.Redis(host="192.168.100.2", port=6379, decode_responses=True)
+r = redis.Redis(host="192.168.100.2", port=6380, decode_responses=True)
 
 app = Flask(__name__)
 g_webhook_data = {}
