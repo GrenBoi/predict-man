@@ -3,7 +3,7 @@ import statbotics
 import requests
 
 prediction_api_url = "https://match.api.apisb.me/prediction"
-r = redis.Redis(host="redis", port=6379, decode_responses=True)
+r = redis.Redis(host="192.168.100.2", port=6379, decode_responses=True)
 sb = statbotics.Statbotics()
 
 
@@ -19,7 +19,12 @@ class PredictionAPI_Manager:
         Tuple Format: (winnerPredict, red is winner probability, totalAccuracy), if match does not exist, return None
 
         """
-
+        try:
+            if not r.exists(match_key):
+                return None
+        except(redis.exceptions.ConnectionError):
+            print("Redis Connection Error")
+            return None
         if r.hexists(match_key, "prediction_api_predicted_winner"):
             win_probability = r.hget(
                 match_key, "prediction_api_predicted_winner_probability"
@@ -62,7 +67,10 @@ class PredictionAPI_Manager:
             "team-blue-3": teams[5],
         }
         response = requests.post(prediction_api_url, payload)
-        self.input_match_prediction(response.json(), match_key)
+        try:
+            self.input_match_prediction(response.json(), match_key)
+        except:
+            print(response)
 
     def input_match_prediction(self, return_json, match_key):
         """
