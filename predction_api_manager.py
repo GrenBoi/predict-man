@@ -6,7 +6,7 @@ prediction_api_url = "https://match.api.apisb.me/prediction"
 r = redis.Redis(host="192.168.100.2", port=6380, decode_responses=True)
 sb = statbotics.Statbotics()
 
-
+    
 class PredictionAPI_Manager:
     def __init__(self):
         pass
@@ -58,6 +58,16 @@ class PredictionAPI_Manager:
         """
         teams = match_data["team_keys"]
         match_key = match_data["match_key"]
+        response = fetch_from_prediction_api(teams)
+
+        self.input_match_prediction(response.json(), match_key)
+
+    def fetch_from_prediction_api(self, teams):
+        """
+        
+        Returns prediction response from the prediction api from the teams
+
+        """
         payload = {
             "team-red-1": teams[0],
             "team-red-2": teams[1],
@@ -67,10 +77,7 @@ class PredictionAPI_Manager:
             "team-blue-3": teams[5],
         }
         response = requests.post(prediction_api_url, payload)
-        try:
-            self.input_match_prediction(response.json(), match_key)
-        except:
-            print(response)
+        return response
 
     def input_match_prediction(self, return_json, match_key):
         """
@@ -179,7 +186,8 @@ class PredictionAPI_Manager:
         """
 
         Takes in prediction json from predictionAPI
-        Outputs who the prediction api thinks is going to win: "blue","red", or "draw"
+        Outputs who the prediction api thinks is going to win: "blue","red", or "draw" 
+        (alliance that is going to win,confidence)
 
         """
 

@@ -2,11 +2,13 @@ from flask import Flask, request, jsonify
 import time
 import redis
 import json
+from flask_cors import CORS
 
 from prediction_manager import PredictionManager
 r = redis.Redis(host="192.168.100.2", port=6380, decode_responses=True)
 
 app = Flask(__name__)
+CORS(app)
 g_webhook_data = {}
 predictMan = PredictionManager()
 
@@ -59,6 +61,22 @@ def send_match_prediction():
         )
     else:
         return jsonify({"match_key could not be found in incoming json": 400})
+@app.route("/average_match_prediction_TEAMKEYS", methods=["POST"])
+def send_match_prediction_using_team_keys():
+    inputted_info = request.json
+    if "teams" in inputted_info:
+        average_match_prediction = predictMan.average_prediction_from_teams(inputted_info["teams"])
+        if average_match_prediction is None:
+            return jsonify(
+                {"Server failed to compute prediction, Internal Server Error": 404}
+            )
+        return jsonify(
+            {
+                "prediction_manager_prediction": average_match_prediction
+            }
+        )
+    else:
+        return jsonify({"'teams' could not be found in incoming json": 400})
 @app.route("/get_completed_keys_database", methods=["GET"])
 def send_completed_keys_database():
     if not r.exists('completed_keys'):
@@ -69,7 +87,16 @@ def send_completed_keys_database():
     return jsonify(
         {"completed_keys": json.loads(completed_keys)}
     )
+@app.route("/add_match_ranks_to_database", methods=["POST"])
+def add_match_ranks_to_database():
+    #Example: {b:{1710:0},r:{1710:0}}
+    inputted_info = request.json
+    predictMan.add_match_rank_to_database(inputted_info)
+    return jsonify(
+        {"Success": 200}
+    )
 
+    
 #    Get upcoming match data and send prediction to the statbotics handler
 def get_upcoming_match_data(webhook_data):
     """Takes in TBA data and prints out the scheduled time of competition as well as passing data to the PredictionManager"""
