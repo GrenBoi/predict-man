@@ -47,7 +47,10 @@ def recieve_notification_TBA():
 # add payload with {match_key: "(match key/match id)"}
 @app.route("/average_match_prediction", methods=["POST"])
 def send_match_prediction():
-    inputted_info = request.json
+    try:
+        inputted_info = request.json
+    except():
+        print('error, info sent was: '+str(request))
     if "match_key" in inputted_info:
         average_match_prediction = predictMan.average_prediction(inputted_info["match_key"])
         if average_match_prediction is None:
@@ -63,7 +66,10 @@ def send_match_prediction():
         return jsonify({"match_key could not be found in incoming json": 400})
 @app.route("/average_match_prediction_TEAMKEYS", methods=["POST"])
 def send_match_prediction_using_team_keys():
-    inputted_info = request.json
+    try:
+        inputted_info = request.json
+    except():
+        print('error, info sent was: '+str(request))
     if "teams" in inputted_info:
         average_match_prediction = predictMan.average_prediction_from_teams(inputted_info["teams"])
         if average_match_prediction is None:
@@ -90,7 +96,10 @@ def send_completed_keys_database():
 @app.route("/add_match_ranks_to_database", methods=["POST"])
 def add_match_ranks_to_database():
     #Example: {b:{1710:0},r:{1710:0}}
-    inputted_info = request.json
+    try:
+        inputted_info = request.json
+    except():
+        print('error, info sent was: '+str(request))
     predictMan.add_match_rank_to_database(inputted_info)
     return jsonify(
         {"Success": 200}
