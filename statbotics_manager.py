@@ -2,7 +2,7 @@ import redis
 import statbotics
 import json
 
-r = redis.Redis(host="192.168.100.2", port=6379, decode_responses=True)
+r = redis.Redis(host="192.168.100.2", port=6380, decode_responses=True)
 sb = statbotics.Statbotics()
 
 
@@ -107,18 +107,17 @@ class Statbotics_Manager:
             r.hexists(match_key, "was_statbotics_correct")
             or not r.hexists(match_key, "match_key")
         ):
-            pass
+            return
         # find and update winner
         statbotics_match_data = sb.get_match(match_key)
         winner = statbotics_match_data["result"]["winner"]
 
         #If there is an error with TBA, some match scores will have a None value so we attempt to catch that here
-        if winner == None:
+        probability_red_wins = r.hget(match_key, "statbotics_red_team_winning_prob")
+        if winner is None or probability_red_wins is None:
             return 
-
         r.hset(match_key, "actual_winner", winner)
         # update the match info to have is_statbotics correct section
-        probability_red_wins = r.hget(match_key, "statbotics_red_team_winning_prob")
         if (float(probability_red_wins) >= 0.5 and winner == "red") or (
             float(probability_red_wins) <= 0.5 and winner == "blue"
         ):
