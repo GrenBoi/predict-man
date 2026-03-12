@@ -124,5 +124,4 @@ def get_upcoming_match_data(webhook_data):
     predictMan.PredictionAPI_Manager.calculate_match_prediction(webhook_data["message_data"])
     
 def update_completed_keys_database(match_key):
-    print(match_key)
     r.sadd("completed_keys", match_key)
