@@ -88,7 +88,8 @@ def send_completed_keys_database():
         return jsonify(
                 {"No completed keys in database": 200}
             )
-    completed_keys = r.get('completed_keys')
+    completed_keys = list(r.smembers("completed_keys"))
+    print(completed_keys)
     return jsonify(
         {"completed_keys": json.loads(completed_keys)}
     )
@@ -121,14 +122,7 @@ def get_upcoming_match_data(webhook_data):
         webhook_data["message_data"]
     )
     predictMan.PredictionAPI_Manager.calculate_match_prediction(webhook_data["message_data"])
+    
 def update_completed_keys_database(match_key):
-    if not r.exists("completed_keys"):
-        json_string = json.dumps([match_key])
-        r.set("completed_keys", json_string)
-        return
-    completed_keys_json = r.get("completed_keys")
-    retrieved_list_from_json = json.loads(completed_keys_json)
-    if match_key not in retrieved_list_from_json:
-        retrieved_list_from_json.append(match_key)
-        json_string = json.dumps(retrieved_list_from_json)
-        r.set("completed_keys", json_string)
+    print(match_key)
+    r.sadd("completed_keys", match_key)
