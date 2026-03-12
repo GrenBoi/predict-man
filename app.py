@@ -3,9 +3,11 @@ import time
 import redis
 import json
 from flask_cors import CORS
+from rq import Queue
 
 from prediction_manager import PredictionManager
 r = redis.Redis(host="192.168.100.2", port=6380, decode_responses=True)
+q = Queue(connection=redis.Redis(host="192.168.100.2", port=6380))
 
 app = Flask(__name__)
 CORS(app)
@@ -26,18 +28,15 @@ def recieve_notification_TBA():
 
         """upcoming match"""
     if g_webhook_data["message_type"] == "upcoming_match":
-        get_upcoming_match_data(g_webhook_data)
+        result = q.enqueue(get_upcoming_match_data, g_webhook_data)
         return {"success": "success"}, 200
         
         """match score"""
     elif g_webhook_data["message_type"] == "match_score":
         # get match prediction for the match that is recieved
-        predictMan.Statbotics_Manager.update_accuracy(
-            g_webhook_data["message_data"]
-        )
-        predictMan.PredictionAPI_Manager.update_accuracy(
-            g_webhook_data["message_data"]
-        )
+        result = q.enqueue(predictMan.Statbotics_Manager.update_accuracy, g_webhook_data["message_data"])
+        result = q.enqueue(predictMan.PredictionAPI_Manager.update_accuracy, g_webhook_data["message_data"])
+
         update_completed_keys_database(g_webhook_data["message_data"]["match_key"])
         return {"success": "success"}, 200
     else:

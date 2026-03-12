@@ -58,7 +58,7 @@ class PredictionAPI_Manager:
         """
         teams = match_data["team_keys"]
         match_key = match_data["match_key"]
-        response = fetch_from_prediction_api(teams)
+        response = self.fetch_from_prediction_api(teams)
 
         self.input_match_prediction(response.json(), match_key)
 
